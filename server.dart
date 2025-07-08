@@ -19,15 +19,16 @@ class Todo {
     Todo(this.id, this.task, this.createdAt, this.isCompleted);
 }
 
+typedef CounterType = ({int Function(int) add, int Function() value});
+
 void main() async {
     var counter = () {
-        int value = 0;
+        int num = 0;
+
         return (
-            {bool increment = false}
-        ) {
-            if (increment) value++;
-            return value;
-        };
+            value: () => num,
+            add: (int n) => num += n
+        );
     }();
 
     final db = sqlite3.open('todos.db');
@@ -57,7 +58,7 @@ void main() async {
     print('Server running on http://${server.address.host}:${server.port}');
 }
 
-Response counterHandler(Request req, Function counter) {
+Response counterHandler(Request req, CounterType counter) {
     final styles = File('web/counter.css').readAsStringSync();
     final jsScript = File('web/counter.js').readAsStringSync();
 
@@ -69,7 +70,7 @@ Response counterHandler(Request req, Function counter) {
         body(
             h1()('Number Generator') +
             button({'onclick': 'getNumber()'})('Get Number') +
-            div({'id': 'result'})('Your number: ${counter()}') +
+            div({'id': 'result'})('Your number: ${counter.value()}') +
             div({'class': 'todo-input-container'})(
                 input({'type': 'text', 'id': 'todoInput', 'placeholder': 'Enter a new task...'})() +
                 button({'id': 'addTodoBtn'})('Add Todo')
@@ -81,11 +82,11 @@ Response counterHandler(Request req, Function counter) {
     return Response.ok(res, headers: {'Content-Type': 'text/html'});
 }
 
-Future<Response> countHandler(Request request, Function counter) async {
-    counter(increment: true);
+Future<Response> countHandler(Request request, CounterType counter) async {
+    counter.add(1);
 
     return Response.ok(
-        '{"number": ${counter()}}',
+        '{"number": ${counter.value()}}',
         headers: {'Content-Type': 'application/json'},
     );
 }

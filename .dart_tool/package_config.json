@@ -113,10 +113,10 @@
       "name": "dart_web_server_with_routing",
       "rootUri": "../",
       "packageUri": "lib/",
-      "languageVersion": "2.12"
+      "languageVersion": "3.0"
     }
   ],
-  "generated": "2025-07-07T00:08:17.841245Z",
+  "generated": "2025-07-08T17:22:42.991033Z",
   "generator": "pub",
   "generatorVersion": "3.4.4",
   "pubCache": "file:///C:/Users/User/AppData/Local/Pub/Cache"
