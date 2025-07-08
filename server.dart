@@ -2,19 +2,53 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
 import 'package:dartz/dartz.dart';
+import 'package:sqlite3/sqlite3.dart';
 
 import 'html-builder.dart';
+import 'dart:convert';
+import 'dart:io';
 
-var counter = 0;
+//var counterVar = 0;
+
+class Todo {
+    final int id;
+    final String task;
+    final DateTime createdAt;
+    final bool isCompleted;
+
+    Todo(this.id, this.task, this.createdAt, this.isCompleted);
+}
 
 void main() async {
-    print(divide(10, 2));
-    print(divide(10, 0));
+    var counter = () {
+        int value = 0;
+        return (
+            {bool increment = false}
+        ) {
+            if (increment) value++;
+            return value;
+        };
+    }();
+
+    final db = sqlite3.open('todos.db');
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS todos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
+        is_completed BOOLEAN DEFAULT FALSE
+        );
+    ''');
+
+    //final allTodos = db.select('SELECT * FROM todos');
 
     final router = Router()
-        ..get('/', home)
-        ..post('/api/number', count);
-  
+        ..get('/counter', (Request req) => counterHandler(req, counter))
+        ..post('/api/number', (Request req) => countHandler(req, counter))
+        ..get('/todo', todoHandler)
+        ..post('/api/add_todo', add_todo)
+        ; 
+
     final handler = const Pipeline()
         .addMiddleware(logRequests())
         .addHandler(router);
@@ -23,58 +57,10 @@ void main() async {
     print('Server running on http://${server.address.host}:${server.port}');
 }
 
-Response home(Request req) {
-    final styles = '''
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            text-align: center;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        #result {
-            margin-top: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            min-height: 30px;
-        }''';
+Response counterHandler(Request req, Function counter) {
+    final styles = File('web/counter.css').readAsStringSync();
+    final jsScript = File('web/counter.js').readAsStringSync();
 
-    final jsScript = '''
-    async function getNumber() {
-        const resultElement = document.getElementById('result');
-    
-        try {
-            const response = await fetch('/api/number', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ requestTime: new Date().toISOString() })
-            });
-            
-            if (!response.ok) {
-                throw new Error('Server error: ' + response.status);
-            }
-            
-            const data = await response.json();
-            resultElement.innerText = 'Your number: ' + data.number;
-        } catch (error) {
-            resultElement.innerText = 'Error: ' + error.message;
-            console.error('Error:', error);
-        }
-    }''';
     final res = html(
         head(
             title('Number Generator') +
@@ -83,7 +69,11 @@ Response home(Request req) {
         body(
             h1()('Number Generator') +
             button({'onclick': 'getNumber()'})('Get Number') +
-            div({'id': 'result'})('Your number: ${counter}') +
+            div({'id': 'result'})('Your number: ${counter()}') +
+            div({'class': 'todo-input-container'})(
+                input({'type': 'text', 'id': 'todoInput', 'placeholder': 'Enter a new task...'})() +
+                button({'id': 'addTodoBtn'})('Add Todo')
+            ) +
             script(jsScript)
         )
     );
@@ -91,13 +81,41 @@ Response home(Request req) {
     return Response.ok(res, headers: {'Content-Type': 'text/html'});
 }
 
-Future<Response> count(Request request) async {
-    counter++;
-    
+Future<Response> countHandler(Request request, Function counter) async {
+    counter(increment: true);
+
     return Response.ok(
-        '{"number": $counter}',
+        '{"number": ${counter()}}',
         headers: {'Content-Type': 'application/json'},
     );
+}
+
+Response todoHandler(Request req) {
+    return Response.ok("");
+}
+
+Future<Response> add_todo(Request request) async {
+    final body = await request.readAsString();
+    final data = jsonDecode(body) as Map<String, dynamic>;
+
+    final db = sqlite3.open('todos.db');
+
+    try {
+        db.execute(
+        'INSERT INTO todos (task, due_date, is_completed) VALUES (?, ?, ?)', [
+            data['task'],
+            data['dueDate'] != null 
+            ? DateTime.parse(data['dueDate']).toIso8601String() 
+            : null,
+            false
+        ]);
+
+        return Response.ok('Todo added');
+    } catch (e) {
+        return Response.internalServerError(body: 'Error: $e');
+    } finally {
+        db.dispose();
+    }
 }
 
 Either<String, double> divide(int a, int b) {
