@@ -26,10 +26,10 @@ TagBuilderWithAttrs _createTag(String tagName, {bool selfClosing = false}) {
                 .join();
 
             // Handle self-closing tags
-            if (selfClosing) return '<$tagName$attrs />';
+            if (selfClosing) return '<$tagName$attrs>';
 
             // Handle regular tags with content
-            final body = content != null ? content.toString() : '';
+            final body = content?.toString() ?? '';
             return '<$tagName$attrs>$body</$tagName>';
         };
     };
@@ -54,6 +54,7 @@ final p = _createTag('p');
 final span = _createTag('span');
 final a = _createTag('a');
 final button = _createTag('button');
+final form = _createTag('form');
 
 // Self-closing tags
 final img = _createTag('img', selfClosing: true);

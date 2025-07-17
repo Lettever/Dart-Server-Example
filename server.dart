@@ -44,6 +44,7 @@ void main() async {
     //final allTodos = db.select('SELECT * FROM todos');
 
     final router = Router()
+        ..get('/', home)
         ..get('/counter', (Request req) => counterHandler(req, counter))
         ..post('/api/number', (Request req) => countHandler(req, counter))
         ..get('/todo', todoHandler)
@@ -56,6 +57,21 @@ void main() async {
 
     final server = await shelf_io.serve(handler, 'localhost', 8080);
     print('Server running on http://${server.address.host}:${server.port}');
+}
+
+Response home(Request req) {
+    final res = html(
+        head(
+            title('Home Page')
+        ) +
+        body(
+            h1()('Home Page') +
+            a({'href': '/counter'})('counter') +
+            a({'href': '/todo'})('todo')
+        )
+    );
+
+    return Response.ok(res, headers: {'Content-Type': 'text/html'});
 }
 
 Response counterHandler(Request req, CounterType counter) {
@@ -91,8 +107,24 @@ Future<Response> countHandler(Request request, CounterType counter) async {
     );
 }
 
+//nextSibling
+//previousSibling
+
 Response todoHandler(Request req) {
-    return Response.ok("");
+    final res = html(
+        body(
+            input({'type': 'text', 'id': 'input'})() +
+            button({'onclick': 'foo(this)'})('Hello') + 
+            h1()('hello')
+        ) +
+        script("""
+        function foo(elem) {
+            console.log(elem.parentElement.childNodes)
+        }
+    """)
+    );
+
+    return Response.ok(res, headers: {'Content-Type': 'text/html'});
 }
 
 Future<Response> add_todo(Request request) async {
